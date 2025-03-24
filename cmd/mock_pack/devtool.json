@@ -1,0 +1,26 @@
+{
+  "name": "mock_pack",
+  "scripts": {
+    "build": "echo '请在配置文件中添加构建脚本'",
+    "format": "echo '请在配置文件中添加格式化脚本'",
+    "start": "echo '请在配置文件中添加启动脚本'",
+    "test": "echo '请在配置文件中添加测试脚本'",
+    "watch": "echo '请在配置文件中添加监视脚本'"
+  },
+  "watchDirs": [
+    "src",
+    "public"
+  ],
+  "watchExts": [
+    "js",
+    "jsx",
+    "ts",
+    "tsx",
+    "css",
+    "scss",
+    "html"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

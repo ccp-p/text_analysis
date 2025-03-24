@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings" // 新增导入
 	"sync"
 	"time"
 )
@@ -130,82 +131,92 @@ func main() {
     // 创建路由
     mux := http.NewServeMux()
 
-    // 获取所有用户
-    mux.HandleFunc("GET /users", func(w http.ResponseWriter, r *http.Request) {
-        users := store.GetAll()
-        sendJSON(w, ApiResponse{Success: true, Data: users})
+    // 处理 /users 路由（获取所有用户和创建用户）
+    mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+        // 确保是根路径 /users 而不是 /users/anything
+        if r.URL.Path != "/users" {
+            http.NotFound(w, r)
+            return
+        }
+        
+        switch r.Method {
+        case http.MethodGet:
+            // 获取所有用户
+            users := store.GetAll()
+            sendJSON(w, ApiResponse{Success: true, Data: users})
+            
+        case http.MethodPost:
+            // 创建用户
+            var user User
+            if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+                sendError(w, "无效的请求数据", http.StatusBadRequest)
+                return
+            }
+            
+            createdUser := store.Create(user)
+            sendJSON(w, ApiResponse{Success: true, Data: createdUser})
+            
+        default:
+            http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
+        }
     })
 
-    // 获取单个用户
-    mux.HandleFunc("GET /users/{id}", func(w http.ResponseWriter, r *http.Request) {
-        idStr := r.PathValue("id")
+    // 处理 /users/{id} 路由（获取、更新、删除单个用户）
+    mux.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
+        // 从路径中提取ID
+        pathParts := strings.Split(r.URL.Path, "/")
+        if len(pathParts) != 3 {
+            sendError(w, "无效的路径", http.StatusBadRequest)
+            return
+        }
+        
+        idStr := pathParts[2]
         id, err := strconv.Atoi(idStr)
         if err != nil {
             sendError(w, "无效的用户ID", http.StatusBadRequest)
             return
         }
-
-        user, exists := store.GetByID(id)
-        if !exists {
-            sendError(w, "用户不存在", http.StatusNotFound)
-            return
+        
+        switch r.Method {
+        case http.MethodGet:
+            // 获取单个用户
+            user, exists := store.GetByID(id)
+            if !exists {
+                sendError(w, "用户不存在", http.StatusNotFound)
+                return
+            }
+            
+            sendJSON(w, ApiResponse{Success: true, Data: user})
+            
+        case http.MethodPut:
+            // 更新用户
+            var user User
+            if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+                sendError(w, "无效的请求数据", http.StatusBadRequest)
+                return
+            }
+            
+            updatedUser, exists := store.Update(id, user)
+            if !exists {
+                sendError(w, "用户不存在", http.StatusNotFound)
+                return
+            }
+            
+            sendJSON(w, ApiResponse{Success: true, Data: updatedUser})
+            
+        case http.MethodDelete:
+            // 删除用户
+            success := store.Delete(id)
+            if !success {
+                sendError(w, "用户不存在", http.StatusNotFound)
+                return
+            }
+            
+            sendJSON(w, ApiResponse{Success: true})
+            
+        default:
+            http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
         }
-
-        sendJSON(w, ApiResponse{Success: true, Data: user})
-    })
-
-    // 创建用户
-    mux.HandleFunc("POST /users", func(w http.ResponseWriter, r *http.Request) {
-        var user User
-        if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-            sendError(w, "无效的请求数据", http.StatusBadRequest)
-            return
-        }
-
-        createdUser := store.Create(user)
-        sendJSON(w, ApiResponse{Success: true, Data: createdUser})
-    })
-
-    // 更新用户
-    mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
-        idStr := r.PathValue("id")
-        id, err := strconv.Atoi(idStr)
-        if err != nil {
-            sendError(w, "无效的用户ID", http.StatusBadRequest)
-            return
-        }
-
-        var user User
-        if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-            sendError(w, "无效的请求数据", http.StatusBadRequest)
-            return
-        }
-
-        updatedUser, exists := store.Update(id, user)
-        if !exists {
-            sendError(w, "用户不存在", http.StatusNotFound)
-            return
-        }
-
-        sendJSON(w, ApiResponse{Success: true, Data: updatedUser})
-    })
-
-    // 删除用户
-    mux.HandleFunc("DELETE /users/{id}", func(w http.ResponseWriter, r *http.Request) {
-        idStr := r.PathValue("id")
-        id, err := strconv.Atoi(idStr)
-        if err != nil {
-            sendError(w, "无效的用户ID", http.StatusBadRequest)
-            return
-        }
-
-        success := store.Delete(id)
-        if !success {
-            sendError(w, "用户不存在", http.StatusNotFound)
-            return
-        }
-
-        sendJSON(w, ApiResponse{Success: true})
     })
 
     // 应用中间件

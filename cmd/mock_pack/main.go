@@ -1,20 +1,20 @@
 package main
 
 import (
-    "bufio"
-    "encoding/json"
-    "flag"
-    "fmt"
-    "io"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "strings"
-    "sync"
-    "time"
+	"bufio"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
 
-    "github.com/fatih/color"
+	"github.com/fatih/color"
 )
 
 // 配置结构
@@ -170,7 +170,7 @@ func interactiveMode() {
             cleanupProcesses()
             fmt.Println(successColor("已停止所有进程"))
         default:
-            if scriptCmd, ok := config.Scripts[command]; ok {
+            if _, ok := config.Scripts[command]; ok {
                 runScript(command, args)
             } else {
                 fmt.Printf("%s 未知命令: %s\n", errorColor("错误"), command)
