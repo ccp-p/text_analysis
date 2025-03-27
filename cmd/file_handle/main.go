@@ -31,9 +31,9 @@ type FilterConfig struct {
 
 func main() {
     // 命令行参数
-    rootDir := flag.String("dir", "..//..//..", "要搜索的根目录")
-    pattern := flag.String("pattern", "Test", "要搜索的正则表达式模式")
-    extensions := flag.String("ext", ".go,.js,.py,.html,.css", "要搜索的文件扩展名(逗号分隔)")
+    rootDir := flag.String("dir", "D:\\download\\dest", "要搜索的根目录")
+    pattern := flag.String("pattern", "吸引是", "要搜索的正则表达式模式")
+    extensions := flag.String("ext", ".go,.js,.py,.html,.css,.txt", "要搜索的文件扩展名(逗号分隔)")
     ignoreDirs := flag.String("ignore", "node_modules,vendor,.git", "要忽略的目录(逗号分隔)")
     concurrency := flag.Int("concurrency", runtime.NumCPU(), "并发处理的文件数")
     maxSize := flag.Int64("maxsize", 10*1024*1024, "最大文件大小(字节)")
