@@ -14,6 +14,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"context"
+    "github.com/chromedp/chromedp"
+    "github.com/chromedp/cdproto/dom"
 )
 
 // 视频信息结构体
@@ -120,7 +123,6 @@ func tryRedirectMethod(shortURL string, client *http.Client) (*VideoInfo, error)
 	// 获取真实URL
 	realURL := resp.Request.URL.String()
 	fmt.Printf("重定向后的真实URL: %s\n", realURL)
-
 	// 尝试从URL中提取视频ID
 	var videoID string
 	patterns := []string{
@@ -144,13 +146,17 @@ func tryRedirectMethod(shortURL string, client *http.Client) (*VideoInfo, error)
 	}
 
 	fmt.Printf("提取的视频ID: %s\n", videoID)
-
+    // 使用无头浏览器获取HTML内容
+    htmlContent, err := getHTMLWithHeadlessBrowser(shortURL)
+    if err != nil {
+        return nil, err
+    }
 	// 读取HTML内容用于备用解析
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %w", err)
-	}
-	htmlContent := string(body)
+	// body, err := io.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("读取响应失败: %w", err)
+	// }
+	// htmlContent := string(body)
 
 	// 尝试从页面中找到隐藏的JSON数据
 	var jsonData map[string]interface{}
@@ -441,6 +447,63 @@ func sanitizeFilename(filename string) string {
 	return strings.TrimSpace(result)
 }
 
+// 使用无头浏览器获取HTML内容
+func getHTMLWithHeadlessBrowser(url string) (string, error) {
+    // 创建一个带超时的上下文
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    
+    // 创建Chrome实例选项
+    opts := append(chromedp.DefaultExecAllocatorOptions[:],
+        chromedp.Flag("headless", true),
+        chromedp.Flag("disable-gpu", true),
+        chromedp.Flag("no-sandbox", true),
+        chromedp.Flag("disable-dev-shm-usage", true),
+        chromedp.UserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"),
+    )
+    
+    // 创建新的浏览器实例
+    allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
+    defer cancel()
+    
+    // 创建浏览器上下文
+    taskCtx, cancel := chromedp.NewContext(allocCtx)
+    defer cancel()
+    
+    // 设置超时防止无响应
+    taskCtx, cancel = context.WithTimeout(taskCtx, 25*time.Second)
+    defer cancel()
+    
+    fmt.Println("启动无头浏览器访问链接...")
+    
+    // 存储HTML内容和实际URL
+    var htmlContent string
+    var currentURL string
+    
+    // 运行浏览器并获取内容
+    err := chromedp.Run(taskCtx,
+        chromedp.Navigate(url),
+        chromedp.Sleep(3*time.Second), // 等待JavaScript执行完成
+        chromedp.Location(&currentURL),
+        chromedp.ActionFunc(func(ctx context.Context) error {
+            node, err := dom.GetDocument().Do(ctx)
+            if err != nil {
+                return err
+            }
+            htmlContent, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+            return err
+        }),
+    )
+    
+    if err != nil {
+        return "", fmt.Errorf("使用无头浏览器访问失败: %w", err)
+    }
+    
+    fmt.Printf("成功获取HTML内容，长度: %d 字节\n", len(htmlContent))
+    fmt.Printf("当前URL: %s\n", currentURL)
+    
+    return htmlContent, nil
+}
 func main() {
 	var shortURL string
 
@@ -507,3 +570,4 @@ func main() {
 	fmt.Println("操作完成，按回车键退出...")
 	fmt.Scanln()
 }
+

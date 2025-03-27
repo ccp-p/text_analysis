@@ -34,9 +34,9 @@ type PageData struct {
 
 func main() {
     // 解析命令行参数
-    startURL := flag.String("url", "https://golang.org", "起始 URL")
+    startURL := flag.String("url", "https://go.dev/", "起始 URL")
     maxDepth := flag.Int("depth", 2, "最大爬取深度")
-    maxURLs := flag.Int("max", 1, "最大爬取 URL 数量")
+    maxURLs := flag.Int("max", 5, "最大爬取 URL 数量")
     sameHost := flag.Bool("same-host", true, "仅爬取相同主机的 URL")
     timeout := flag.Duration("timeout", 10*time.Second, "HTTP 请求超时")
     concurrent := flag.Int("concurrent", 5, "并发爬取数量")
