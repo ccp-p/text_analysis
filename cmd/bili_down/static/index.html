@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B站字幕提取工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            background-color: #f8f9fa;
+        }
+        .subtitle-card {
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+        .subtitle-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #fb7299;
+            color: white;
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header text-center">
+            <h1>B站字幕提取工具</h1>
+            <p class="lead">无需观看视频，直接获取并浏览B站视频字幕</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="card-title mb-0">获取新的字幕</h3>
+                    </div>
+                    <div class="card-body">
+                        <form action="/fetch" method="post" id="fetchForm">
+                            <div class="mb-3">
+                                <label for="videoID" class="form-label">视频ID (BV号、av号或完整链接)</label>
+                                <input type="text" class="form-control" id="videoID" name="videoID" 
+                                       placeholder="例如: BV1xx411c7mu 或 https://www.bilibili.com/video/BV1xx411c7mu" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="pageSelect" class="form-label">分P选择 (可选)</label>
+                                <div class="input-group">
+                                    <select class="form-select" id="pageSelect" name="pageSelect">
+                                        <option value="" selected>全部分P</option>
+                                        <option value="1">第1P</option>
+                                        <option value="LAST">最后一P</option>
+                                        <option value="custom">自定义...</option>
+                                    </select>
+                                    <input type="text" class="form-control d-none" id="customPage" name="customPage" 
+                                           placeholder="例如: 2 或 1,3,5 或 2-4">
+                                </div>
+                                <div class="form-text text-muted">
+                                    可以选择指定的分P，对于多P视频很有用。自定义格式: 单个数字、逗号分隔的列表或范围 (例如: 3-5)
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="includeAI" name="includeAI" checked>
+                                <label class="form-check-label" for="includeAI">包含AI自动生成的字幕</label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="spinner"></span>
+                                获取字幕
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                {{if .RecentSubtitles}}
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="card-title mb-0">已获取的字幕</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {{range .RecentSubtitles}}
+                            <div class="col-md-6">
+                                <div class="card subtitle-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{.Title}}</h5>
+                                        <p class="card-text text-muted">
+                                            ID: {{.VideoID}}<br>
+                                            获取时间: {{.FetchTime.Format "2006-01-02 15:04:05"}}
+                                        </p>
+                                        <a href="/view?id={{.VideoID}}" class="btn btn-sm btn-outline-primary">查看字幕</a>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('fetchForm').addEventListener('submit', function() {
+            document.getElementById('spinner').classList.remove('d-none');
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').innerText = '正在获取...';
+            
+            const timeoutId = setTimeout(function() {
+                alert('获取字幕请求超时，请检查服务器日志或稍后再试');
+                document.getElementById('spinner').classList.add('d-none');
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').innerText = '获取字幕';
+            }, 60000); // 60秒超时
+            
+            window.addEventListener('load', function clearTimeout() {
+                clearTimeout(timeoutId);
+                window.removeEventListener('load', clearTimeout);
+            }, {once: true});
+        });
+        
+        document.getElementById('pageSelect').addEventListener('change', function() {
+            const customInput = document.getElementById('customPage');
+            if (this.value === 'custom') {
+                customInput.classList.remove('d-none');
+                customInput.setAttribute('required', 'required');
+            } else {
+                customInput.classList.add('d-none');
+                customInput.removeAttribute('required');
+            }
+        });
+    </script>
+</body>
+</html>
